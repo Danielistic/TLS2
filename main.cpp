@@ -29,7 +29,10 @@ int main()
     //                 const char *service,  // e.g. "http" or port number
     //                 const struct addrinfo *hints,
     //                 struct addrinfo **res);
-    getaddrinfo(NULL, "8080", &hints, &result);
+    if (getaddrinfo(NULL, "8080", &hints, &result))
+    {
+        std::cout << "\nerror in getaddrinfo\n";
+    }
 
-        return 0;
+    return 0;
 }
