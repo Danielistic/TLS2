@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h> //what even are headers, addrinfo is defined in netdb
+#include <arpa/inet.h>
 
 //------------------addrinfo------------------------------
 // struct addrinfo {
@@ -29,10 +30,13 @@ int main()
     //                 const char *service,  // e.g. "http" or port number
     //                 const struct addrinfo *hints,
     //                 struct addrinfo **res);
-    if (getaddrinfo(NULL, "8080", &hints, &result))
+    if (getaddrinfo("www.nitk.ac.in", "8080", &hints, &result))
     {
         std::cout << "\nerror in getaddrinfo\n";
     }
+    sockaddr_in *addr4 = (sockaddr_in *)result->ai_addr;
+    char ip[INET_ADDRSTRLEN];
+    std::cout << inet_ntop(AF_INET, &addr4->sin_addr, ip, result->ai_addrlen);
 
     return 0;
 }
