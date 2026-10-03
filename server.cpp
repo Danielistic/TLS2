@@ -23,7 +23,7 @@ int main()
     addrinfo hints{}; // creating a hint to pass into getaddrinfo
     addrinfo *result;
     hints.ai_flags = AI_PASSIVE;
-    hints.ai_family = AF_UNSPEC;
+    hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
 
     // int getaddrinfo(const char *node,   // e.g. "www.example.com" or IP
@@ -52,6 +52,8 @@ int main()
 
     bind(sockfd, result->ai_addr, result->ai_addrlen);
     // error handling pending
+
+    listen(sockfd, 5);
 
     return 0;
 }
