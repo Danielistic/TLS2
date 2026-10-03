@@ -30,13 +30,28 @@ int main()
     //                 const char *service,  // e.g. "http" or port number
     //                 const struct addrinfo *hints,
     //                 struct addrinfo **res);
-    if (getaddrinfo("www.nitk.ac.in", "8080", &hints, &result))
+    int status;
+    if (status = getaddrinfo(NULL, "8080", &hints, &result))
     {
-        std::cout << "\nerror in getaddrinfo\n";
+        std::cerr << "getaddrinfo - " << gai_strerror(status);
+        return 1;
     }
-    sockaddr_in *addr4 = (sockaddr_in *)result->ai_addr;
-    char ip[INET_ADDRSTRLEN];
-    std::cout << inet_ntop(AF_INET, &addr4->sin_addr, ip, result->ai_addrlen);
+
+    // sockaddr_in *addr4 = (sockaddr_in *)result->ai_addr;
+    // char ip[INET_ADDRSTRLEN];
+    // std::cout << inet_ntop(AF_INET, &addr4->sin_addr, ip, result->ai_addrlen);
+
+    // int socket(int domain, int type, int protocol);
+    // int bind(int sockfd, struct sockaddr *my_addr, int addrlen);
+    // int connect(int sockfd, struct sockaddr *serv_addr, int addrlen);
+    // int listen(int sockfd, int backlog);
+
+    int sockfd;
+    sockfd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    // error handling for socket creating is pending
+
+    bind(sockfd, result->ai_addr, result->ai_addrlen);
+    // error handling pending
 
     return 0;
 }
