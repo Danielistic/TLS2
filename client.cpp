@@ -16,7 +16,14 @@ int main()
 
     int status;
     if (status = getaddrinfo(LOCHOST, PORT, &hints, &result))
-        ;
+    {
+        std::cerr << "getaddrinfo - " << gai_strerror(status);
+        return 1;
+    }
 
-    int sockfd;
+    int connectfd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    // error handling
+
+    connect(connectfd, result->ai_addr, result->ai_addrlen);
+    // error handling
 }
