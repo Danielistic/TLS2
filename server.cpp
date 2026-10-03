@@ -4,6 +4,8 @@
 #include <netdb.h> //what even are headers, addrinfo is defined in netdb
 #include <arpa/inet.h>
 
+#define PORT "8080"
+
 //------------------addrinfo------------------------------
 // struct addrinfo {
 //     int              ai_flags;     // AI_PASSIVE, AI_CANONNAME, etc.
@@ -31,7 +33,7 @@ int main()
     //                 const struct addrinfo *hints,
     //                 struct addrinfo **res);
     int status;
-    if (status = getaddrinfo(NULL, "8080", &hints, &result))
+    if (status = getaddrinfo(NULL, PORT, &hints, &result))
     {
         std::cerr << "getaddrinfo - " << gai_strerror(status);
         return 1;
@@ -54,6 +56,17 @@ int main()
     // error handling pending
 
     listen(sockfd, 5);
+
+    int clientfd;
+    // sockaddr_storage caddr;
+    // socklen_t caddrlen = sizeof caddr;
+
+    sockaddr_in caddr;
+    socklen_t caddrlen = sizeof caddr;
+    char ip[INET_ADDRSTRLEN];
+
+    clientfd = accept(sockfd, (sockaddr *)&caddr, &caddrlen);
+    std::cout << inet_ntop(AF_INET, &caddr.sin_addr, ip, caddrlen);
 
     return 0;
 }
