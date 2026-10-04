@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h> //what even are headers, addrinfo is defined in netdb
@@ -18,22 +19,25 @@ void clienthandle(int clientfd)
 {
     while (1)
     {
-        char msg[1000];
-        int n = recv(clientfd, msg, 999, 0);
+        char msg[65500];
+        auto r = recv_msg(clientfd, msg, 65499);
+        int n = r.first;
+        uint8_t t = r.second;
+
         if (n > 0)
         {
             msg[n] = '\0';
             std::lock_guard<std::mutex> lock(mtx);
             if (Clist[0] == 0 || Clist[1] == 0)
-                send_msg(clientfd, "Nah mate nobody here");
+                send_msg(clientfd, "Nah mate nobody here", t);
             else if (Clist[0] == clientfd)
             {
-                send_msg(Clist[1], msg);
+                send_msg(Clist[1], msg, t); // error handling sendmsg is pending
                 std::cout << "message recieved at server: " << msg << "\n";
             }
             else
             {
-                send_msg(Clist[0], msg);
+                send_msg(Clist[0], msg, t);
                 std::cout << "message recieved at server: " << msg << "\n";
             }
         }
@@ -41,6 +45,11 @@ void clienthandle(int clientfd)
         {
             if (n == -1)
                 perror("recv");
+            if (n == -2 || n == -3)
+            {
+                std::cout << "error code: " << n << "\n";
+                close(clientfd);
+            }
             std::cout << "one of the clients disconnected\n";
             {
                 std::lock_guard<std::mutex> lock(mtx);

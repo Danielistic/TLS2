@@ -14,8 +14,10 @@ void reciever(int connectfd)
 {
     while (1)
     {
-        char msg[1000];
-        int n = recv(connectfd, msg, 999, 0);
+        char msg[65500];
+        auto r = recv_msg(connectfd, msg, 65499);
+        int n = r.first;
+        uint8_t t = r.second;
         if (n > 0)
         {
             msg[n] = '\0';
@@ -25,11 +27,13 @@ void reciever(int connectfd)
         {
             if (n == -1)
                 perror("recv");
+            else if (n == -2 || n == -3)
+                std::cout << "error code: " << n << "\n";
             std::cout << "Disconnected from server... \n";
             break;
         }
     }
-    exit(0);
+    exit(0); // add exit(1) for n = -1
 }
 
 int main()
@@ -65,7 +69,7 @@ int main()
         std::string msg;
         std::getline(std::cin, msg);
 
-        send_msg(connectfd, msg.c_str());
+        send_msg(connectfd, msg.c_str(), 0);
         std::cout << "the msg sent by us: " << msg << "\n";
     }
 }
