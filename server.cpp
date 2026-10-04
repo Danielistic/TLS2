@@ -3,8 +3,56 @@
 #include <sys/socket.h>
 #include <netdb.h> //what even are headers, addrinfo is defined in netdb
 #include <arpa/inet.h>
+#include <cstring>
+#include <thread>
+#include <vector>
+#include <mutex>
+#include "messenger.hpp"
 
 #define PORT "8080"
+
+std::vector<int> Clist(2);
+std::mutex mtx;
+
+void clienthandle(int clientfd)
+{
+    while (1)
+    {
+        char msg[1000];
+        int n = recv(clientfd, msg, 999, 0);
+        if (n > 0)
+        {
+            msg[n] = '\0';
+            std::lock_guard<std::mutex> lock(mtx);
+            if (Clist[0] == 0 || Clist[1] == 0)
+                send_msg(clientfd, "Nah mate nobody here");
+            else if (Clist[0] == clientfd)
+            {
+                send_msg(Clist[1], msg);
+                std::cout << "message recieved at server: " << msg << "\n";
+            }
+            else
+            {
+                send_msg(Clist[0], msg);
+                std::cout << "message recieved at server: " << msg << "\n";
+            }
+        }
+        else if (n <= 0)
+        {
+            if (n == -1)
+                perror("recv");
+            std::cout << "one of the clients disconnected\n";
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                if (clientfd == Clist[0])
+                    Clist[0] = 0;
+                else
+                    Clist[1] = 0;
+            }
+            break;
+        }
+    }
+}
 
 //------------------addrinfo------------------------------
 // struct addrinfo {
@@ -52,21 +100,52 @@ int main()
     sockfd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     // error handling for socket creating is pending
 
-    bind(sockfd, result->ai_addr, result->ai_addrlen);
-    // error handling pending
+    if (bind(sockfd, result->ai_addr, result->ai_addrlen) == 1)
+    {
+        perror("bind");
+        return -1;
+    }
 
-    listen(sockfd, 5);
+    freeaddrinfo(result);
 
-    int clientfd;
-    // sockaddr_storage caddr;
-    // socklen_t caddrlen = sizeof caddr;
+    if (listen(sockfd, 5) == 1)
+    {
+        perror("listen");
+        return -1;
+    };
 
-    sockaddr_in caddr;
-    socklen_t caddrlen = sizeof caddr;
-    char ip[INET_ADDRSTRLEN];
+    std::cout << "listening on PORT:" << PORT << "\n";
 
-    clientfd = accept(sockfd, (sockaddr *)&caddr, &caddrlen);
-    std::cout << inet_ntop(AF_INET, &caddr.sin_addr, ip, caddrlen);
+    while (1)
+    {
+
+        if (Clist[0] == 0 || Clist[1] == 0)
+        {
+            int clientfd;
+            // sockaddr_storage caddr;
+            // socklen_t caddrlen = sizeof caddr;
+            sockaddr_in caddr;
+            socklen_t caddrlen = sizeof caddr;
+
+            clientfd = accept(sockfd, (sockaddr *)&caddr, &caddrlen); // error handling pending
+            if (clientfd == -1)
+            {
+                perror("accept");
+                continue;
+            }
+            // std::cout << inet_ntop(AF_INET, &caddr.sin_addr, ip, caddrlen);
+
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                if (Clist[0] == 0)
+                    Clist[0] = clientfd;
+                else
+                    Clist[1] = clientfd; // need to handle errors if connection is lost by the time it comes here
+                std::thread handle(clienthandle, clientfd);
+                handle.detach();
+            }
+        }
+    }
 
     return 0;
 }
