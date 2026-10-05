@@ -6,7 +6,7 @@ int send_all(int fd, const char *msg, unsigned int len)
 
     while (sentlen < len)
     {
-        int sent = send(fd, msg + sentlen, len - sentlen, MSG_NOSIGNAL);
+        int sent = send(fd, msg + sentlen, len - sentlen, MSG_NOSIGNAL); // what msgnosignal
         if (sent <= 0)
             return 0;
         sentlen += sent;
@@ -14,9 +14,10 @@ int send_all(int fd, const char *msg, unsigned int len)
     return sentlen;
 }
 
-int send_msg(int fd, const char *msg, uint8_t mtype) // -1 iseither 0 len string or error, otherwise len
+int send_msg(int fd, const char *msg, unsigned int len, uint8_t mtype) // -1 iseither 0 len string or error, otherwise len
 {
-    unsigned int len = strlen(msg);
+    // unsigned int len = strlen(msg); doesnt work on 00bytes
+
     if (len == 0)
     {
         return -1;
@@ -28,7 +29,7 @@ int send_msg(int fd, const char *msg, uint8_t mtype) // -1 iseither 0 len string
         send_all(fd, (char *)&temp, sizeof temp) &&
         send_all(fd, msg, len))
     {
-        return strlen(msg);
+        return len;
     }
     else
         return -1;

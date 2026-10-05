@@ -5,10 +5,15 @@
 #include <arpa/inet.h>
 #include <thread>
 #include <string>
+#include <chrono>
 #include "messenger.hpp"
+#include "crypto.hpp"
 
 #define PORT "8080"
 #define LOCHOST "127.0.0.1"
+
+bool KEYESTABLISHED = false;
+crypto C;
 
 void reciever(int connectfd)
 {
@@ -18,10 +23,35 @@ void reciever(int connectfd)
         auto r = recv_msg(connectfd, msg, 65499);
         int n = r.first;
         uint8_t t = r.second;
+
+        if (n > 0 && t == 2)
+        {
+            C.SendPublicKey(connectfd);
+            continue;
+        }
+
+        if (t == 1)
+        {
+            if (C.CreateSharedKey((unsigned char *)msg) < 0)
+            {
+                std::cout << "key Recieved and Dropped\n";
+                continue;
+            }
+            std::cout << "key Recieved and Accepted\n";
+            KEYESTABLISHED = true;
+            continue;
+        }
+
         if (n > 0)
         {
+            if (t == 0 && !KEYESTABLISHED)
+            {
+                std::cout << "message recieved and Dropped due to lack of key\n";
+                continue;
+            }
             msg[n] = '\0';
             std::cout << "message recieved by client:" << msg << "\n";
+            std::cout << "recieved bytes: " << n << "\n";
         }
         else
         {
@@ -60,16 +90,29 @@ int main()
     }
 
     freeaddrinfo(result);
-    std::cout << "we are in the server... i think...\n";
+    std::cout << "we are in the server... \n";
+
+    if (C.KeyGen() < 0)
+    {
+        std::cout << "error generating Key\n";
+        return 0;
+    }
 
     std::thread rsv(reciever, connectfd);
     rsv.detach();
     while (1)
     {
+
+        // if (!KEYESTABLISHED)
+        // {
+        //     C.SendPublicKey(connectfd);
+        //     std::this_thread::sleep_for(std::chrono::seconds(2));
+        //     continue;
+        // }
         std::string msg;
         std::getline(std::cin, msg);
 
-        send_msg(connectfd, msg.c_str(), 0);
-        std::cout << "the msg sent by us: " << msg << "\n";
+        send_msg(connectfd, msg.c_str(), msg.size(), 0);
+        std::cout << "Bytes sent: " << msg.size() << "\n";
     }
 }

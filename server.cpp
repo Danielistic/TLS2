@@ -9,35 +9,59 @@
 #include <vector>
 #include <mutex>
 #include "messenger.hpp"
+#include "crypto.hpp"
 
 #define PORT "8080"
 
 std::vector<int> Clist(2);
 std::mutex mtx;
+crypto C;
 
 void clienthandle(int clientfd)
 {
+    // bool KEYESTABLISHED = false;
+    // C.KeyGen(); // error handling pending
     while (1)
     {
         char msg[65500];
+
         auto r = recv_msg(clientfd, msg, 65499);
         int n = r.first;
         uint8_t t = r.second;
 
         if (n > 0)
         {
+            // THIS SEGMENT HAS LOT OF ERROR, ITS FUNCTION WAS TO ESTALISH KEY WITH EACH CLIENT
+            // if (t == 1)
+            // {
+            //     if (C.CreateSharedKey_server((unsigned char *)msg) < 0)
+            //     {
+            //         std::cout << "key Recieved and Dropped\n";
+            //         C.SendPublicKey(clientfd);
+            //         std::this_thread::sleep_for(std::chrono::seconds(2));
+            //         continue;
+            //     }
+            //     std::cout << "key Recieved and Accepted\n";
+            //     KEYESTABLISHED = true;
+            // }
+            // if (t == 0 && !KEYESTABLISHED)
+            // {
+            //     std::cout << "message recieved and Dropped due to lack of key\n";
+            //     std::this_thread::sleep_for(std::chrono::seconds(2));
+            //     continue;
+            // }
             msg[n] = '\0';
             std::lock_guard<std::mutex> lock(mtx);
             if (Clist[0] == 0 || Clist[1] == 0)
-                send_msg(clientfd, "Nah mate nobody here", t);
+                send_msg(clientfd, "Nah mate nobody here", 20, 0);
             else if (Clist[0] == clientfd)
             {
-                send_msg(Clist[1], msg, t); // error handling sendmsg is pending
+                send_msg(Clist[1], msg, n, t); // error handling sendmsg is pending
                 std::cout << "message recieved at server: " << msg << "\n";
             }
             else
             {
-                send_msg(Clist[0], msg, t);
+                send_msg(Clist[0], msg, n, t);
                 std::cout << "message recieved at server: " << msg << "\n";
             }
         }
@@ -152,6 +176,11 @@ int main()
                     Clist[1] = clientfd; // need to handle errors if connection is lost by the time it comes here
                 std::thread handle(clienthandle, clientfd);
                 handle.detach();
+            }
+            if (Clist[0] != 0 && Clist[1] != 0)
+            {
+                send_msg(Clist[0], "otherguy", 8, 2);
+                send_msg(Clist[1], "otherguy", 8, 2);
             }
         }
     }
